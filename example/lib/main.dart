@@ -13,19 +13,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: WebViewDemo(),
     );
   }
 }
 
 class WebViewDemo extends StatefulWidget {
+  const WebViewDemo({super.key});
+
   @override
   _WebViewDemoState createState() => _WebViewDemoState();
 }
 
 class _WebViewDemoState extends State<WebViewDemo> {
   late WebViewPlugin webViewPlugin;
+  String? errorMessage;
+  bool useUrl = false; // Toggle between URL and HTML
 
   final String sampleHtml = '''
     <div class="container">
@@ -67,22 +71,30 @@ class _WebViewDemoState extends State<WebViewDemo> {
     });
   ''';
 
+  final String sampleUrl = 'https://flutter.dev';
+
   @override
   void initState() {
     super.initState();
-    webViewPlugin = WebViewPlugin(
-      actionHandlers: {
-        'updateText': (payload) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Received: ${payload['text']}')),
-          );
-          webViewPlugin.sendToWebView(
-            action: 'updateContent',
-            payload: {'text': 'Updated from Flutter: ${payload['text']}'},
-          );
+    try {
+      webViewPlugin = WebViewPlugin(
+        actionHandlers: {
+          'updateText': (payload) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Received: ${payload['text']}')),
+            );
+            webViewPlugin.sendToWebView(
+              action: 'updateContent',
+              payload: {'text': 'Updated from Flutter: ${payload['text']}'},
+            );
+          },
         },
-      },
-    );
+      );
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+      });
+    }
   }
 
   @override
@@ -90,32 +102,46 @@ class _WebViewDemoState extends State<WebViewDemo> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('WebView Plugin Demo'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: webViewPlugin.buildWebView(
-              htmlContent: sampleHtml,
-              cssContent: sampleCss,
-              scriptContent: sampleScript,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () {
-                webViewPlugin.sendToWebView(
-                  action: 'updateContent',
-                  payload: {
-                    'text': 'Hello from Flutter at ${DateTime.now()}',
-                  },
-                );
-              },
-              child: const Text('Send to WebView'),
-            ),
+        actions: [
+          IconButton(
+            icon: Icon(useUrl ? Icons.code : Icons.web),
+            onPressed: () {
+              setState(() {
+                useUrl = !useUrl;
+              });
+            },
+            tooltip: 'Toggle URL/HTML',
           ),
         ],
       ),
+      body: errorMessage != null
+          ? Center(child: Text(errorMessage!))
+          : Column(
+              children: [
+                Expanded(
+                  child: webViewPlugin.buildWebView(
+                    content: useUrl ? sampleUrl : sampleHtml,
+                    isUrl: useUrl,
+                    cssContent: useUrl ? null : sampleCss,
+                    scriptContent: useUrl ? null : sampleScript,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      webViewPlugin.sendToWebView(
+                        action: 'updateContent',
+                        payload: {
+                          'text': 'Hello from Flutter at ${DateTime.now()}',
+                        },
+                      );
+                    },
+                    child: const Text('Send to WebView'),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
