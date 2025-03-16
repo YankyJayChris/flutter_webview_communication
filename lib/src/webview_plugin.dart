@@ -1,11 +1,17 @@
-// Copyright (c) 2025 [Your Name]. All rights reserved.
+// Copyright (c) 2025 [IGIHOZO Jean Christian]. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root.
 
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+
+// Conditional imports for platform-specific features
+import 'package:webview_flutter_android/webview_flutter_android.dart'
+    if (dart.library.io) 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart'
+    if (dart.library.io) 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 /// A plugin for creating WebViews with bi-directional communication capabilities.
 class WebViewPlugin {
@@ -16,33 +22,45 @@ class WebViewPlugin {
   ///
   /// [actionHandlers] - A map of action names to their handler functions that process
   /// messages received from the WebView. The handler receives a JSON payload.
+  /// Throws [Exception] if the platform is not supported.
   WebViewPlugin({
     Map<String, Function(Map<String, dynamic>)?>? actionHandlers,
   }) : _actionHandlers = actionHandlers?.map(
               (key, value) => MapEntry(key, value ?? ((_) {})),
             ) ??
             {} {
+    _initializePlatform();
     _initializeController();
   }
 
   /// Builds and returns a WebView widget.
   ///
-  /// [htmlContent] - The HTML content to display (required).
-  /// [cssContent] - Optional CSS styles to include in the <head>.
-  /// [scriptContent] - Optional JavaScript code to include in the page.
+  /// [content] - The content to display: either an HTML string or a URL (required).
+  /// [isUrl] - If true, treats [content] as a URL; if false, treats it as HTML (default: false).
+  /// [cssContent] - Optional CSS styles to include in the <head> (only applies if [isUrl] is false).
+  /// [scriptContent] - Optional JavaScript code to include in the page (only applies if [isUrl] is false).
   /// [height] - Optional height of the WebView widget.
   /// [width] - Optional width of the WebView widget.
-  /// [backgroundColor] - Optional background color for the WebView.
+  /// [backgroundColor] - Optional background color for the WebView (not supported on macOS).
   Widget buildWebView({
-    required String htmlContent,
+    required String content,
+    bool isUrl = false,
     String? cssContent,
     String? scriptContent,
     double? height,
     double? width,
     Color? backgroundColor,
   }) {
-    final String finalHtml = _buildHtml(htmlContent, cssContent, scriptContent);
-    _loadHtmlContent(finalHtml);
+    if (isUrl) {
+      _loadUrlContent(content);
+    } else {
+      final String finalHtml = _buildHtml(content, cssContent, scriptContent);
+      _loadHtmlContent(finalHtml);
+    }
+
+    if (backgroundColor != null && !Platform.isMacOS) {
+      _controller.setBackgroundColor(backgroundColor);
+    }
 
     return SizedBox(
       height: height ?? double.infinity,
@@ -71,15 +89,36 @@ class WebViewPlugin {
     }
   }
 
+  /// Initializes the WebView platform implementation.
+  void _initializePlatform() {
+    if (kIsWeb) {
+      throw Exception(
+        'Web platform is not supported by flutter_webview_communication.',
+      );
+    } else if (Platform.isAndroid) {
+      WebViewPlatform.instance = AndroidWebViewPlatform();
+    } else if (Platform.isIOS || Platform.isMacOS) {
+      WebViewPlatform.instance = WebKitWebViewPlatform();
+    } else {
+      throw Exception(
+        'This platform (${Platform.operatingSystem}) is not supported by flutter_webview_communication.',
+      );
+    }
+  }
+
   /// Initializes the WebViewController with platform-specific configurations.
   void _initializeController() {
     late final PlatformWebViewControllerCreationParams params;
-    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+
+    if (Platform.isIOS || Platform.isMacOS) {
       params = WebKitWebViewControllerCreationParams(
         allowsInlineMediaPlayback: true,
         mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
       );
+    } else if (Platform.isAndroid) {
+      params = const PlatformWebViewControllerCreationParams();
     } else {
+      // This should not be reached due to _initializePlatform check
       params = const PlatformWebViewControllerCreationParams();
     }
 
@@ -102,7 +141,8 @@ class WebViewPlugin {
         },
       );
 
-    if (_controller.platform is AndroidWebViewController) {
+    if (Platform.isAndroid &&
+        _controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
       (_controller.platform as AndroidWebViewController)
           .setMediaPlaybackRequiresUserGesture(false);
@@ -158,12 +198,21 @@ class WebViewPlugin {
     ''';
   }
 
-  /// Loads the HTML content into the WebView.
+  /// Loads HTML content into the WebView.
   Future<void> _loadHtmlContent(String html) async {
     try {
       await _controller.loadHtmlString(html);
     } catch (e) {
       debugPrint('Error loading HTML content: $e');
+    }
+  }
+
+  /// Loads a URL into the WebView.
+  Future<void> _loadUrlContent(String url) async {
+    try {
+      await _controller.loadRequest(Uri.parse(url));
+    } catch (e) {
+      debugPrint('Error loading URL content: $e');
     }
   }
 }
