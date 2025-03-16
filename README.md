@@ -7,9 +7,10 @@ A Flutter plugin for creating WebViews with bi-directional communication capabil
 ## Features
 - Load custom HTML content or URLs
 - Optional CSS styling (for HTML content)
-- Custom JavaScript code injection (for HTML content)
+- Custom JavaScript code injection (embedded for HTML, injected after load for URLs)
 - JSON-based bi-directional communication
 - Action-based message handling
+- Save data to WebView local storage
 - Platform-specific WebView configurations (Android, iOS, macOS)
 
 ## Platform Support
@@ -26,7 +27,7 @@ dependencies:
   flutter_webview_communication: ^0.1.0
 ```
 # Usage
-## Basic Example (HTML Content)
+## Basic Example (HTML Content with Local Storage)
 ```dart
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -73,21 +74,36 @@ class _MyWidgetState extends State<MyWidget> {
                 });
               ''',
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: errorMessage != null
-            ? null
-            : () => webViewPlugin.sendToWebView(
-                  action: 'update',
-                  payload: {'text': 'Hello from Flutter'},
-                ),
-        child: Icon(Icons.send),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: errorMessage != null
+                ? null
+                : () => webViewPlugin.sendToWebView(
+                      action: 'update',
+                      payload: {'text': 'Hello from Flutter'},
+                    ),
+            child: Icon(Icons.send),
+          ),
+          SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: errorMessage != null
+                ? null
+                : () => webViewPlugin.saveToLocalStorage(
+                      key: 'userData',
+                      value: 'Saved from Flutter',
+                    ),
+            child: Icon(Icons.save),
+          ),
+        ],
       ),
     );
   }
 }
 ```
 
-## Basic Example (URL)
+## URL Example with JavaScript Injection and Local Storage
 ```dart
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -126,17 +142,39 @@ class _MyWidgetState extends State<MyWidget> {
       body: errorMessage != null
           ? Center(child: Text(errorMessage!))
           : webViewPlugin.buildWebView(
-              content: 'https://flutter.dev',
+              content: 'https://example.com',
               isUrl: true,
+              scriptContent: '''
+                window.addEventListener('flutterData', (e) => {
+                  const p = document.createElement('p');
+                  p.textContent = e.detail.payload.text;
+                  document.body.appendChild(p);
+                });
+              ''',
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: errorMessage != null
-            ? null
-            : () => webViewPlugin.sendToWebView(
-                  action: 'update',
-                  payload: {'text': 'Hello from Flutter'},
-                ),
-        child: Icon(Icons.send),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: errorMessage != null
+                ? null
+                : () => webViewPlugin.sendToWebView(
+                      action: 'update',
+                      payload: {'text': 'Hello from Flutter'},
+                    ),
+            child: Icon(Icons.send),
+          ),
+          SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: errorMessage != null
+                ? null
+                : () => webViewPlugin.saveToLocalStorage(
+                      key: 'userData',
+                      value: 'Saved from Flutter at ${DateTime.now()}',
+                    ),
+            child: Icon(Icons.save),
+          ),
+        ],
       ),
     );
   }
@@ -170,6 +208,8 @@ plugin.sendToWebView(action: 'update', payload: {'text': 'Hello'});
   - Builds the WebView widget with the specified content (HTML or URL).
 - `sendToWebView({required dynamic payload, String? action})`
   - Sends data to the WebView with an optional action identifier.
+- `saveToLocalStorage({required String key, required dynamic value})`
+  - Saves a key-value pair to the WebView's local storage, where the value is JSON-stringified.
 
 ## JavaScript API
 - `sendToFlutter(action, payload)` - Sends a message to Flutter.

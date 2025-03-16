@@ -38,7 +38,7 @@ class WebViewPlugin {
   /// [content] - The content to display: either an HTML string or a URL (required).
   /// [isUrl] - If true, treats [content] as a URL; if false, treats it as HTML (default: false).
   /// [cssContent] - Optional CSS styles to include in the <head> (only applies if [isUrl] is false).
-  /// [scriptContent] - Optional JavaScript code to include in the page (only applies if [isUrl] is false).
+  /// [scriptContent] - Optional JavaScript code to include in the page (injected after load for URLs).
   /// [height] - Optional height of the WebView widget.
   /// [width] - Optional width of the WebView widget.
   /// [backgroundColor] - Optional background color for the WebView (not supported on macOS).
@@ -52,7 +52,7 @@ class WebViewPlugin {
     Color? backgroundColor,
   }) {
     if (isUrl) {
-      _loadUrlContent(content);
+      _loadUrlContent(content, scriptContent);
     } else {
       final String finalHtml = _buildHtml(content, cssContent, scriptContent);
       _loadHtmlContent(finalHtml);
@@ -86,6 +86,24 @@ class WebViewPlugin {
       await _controller.runJavaScript('receiveFromFlutter($jsData)');
     } catch (e) {
       debugPrint('Error sending data to WebView: $e');
+    }
+  }
+
+  /// Saves a key-value pair to the WebView's local storage.
+  ///
+  /// [key] - The key under which to store the value.
+  /// [value] - The value to store, which will be JSON-stringified.
+  Future<void> saveToLocalStorage({
+    required String key,
+    required dynamic value,
+  }) async {
+    try {
+      final String jsValue = jsonEncode(value);
+      final String jsCode = 'localStorage.setItem("$key", $jsValue);';
+      await _controller.runJavaScript(jsCode);
+      debugPrint('Saved to localStorage: $key = $jsValue');
+    } catch (e) {
+      debugPrint('Error saving to localStorage: $e');
     }
   }
 
@@ -124,6 +142,14 @@ class WebViewPlugin {
 
     _controller = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            // Inject custom JavaScript after the page finishes loading (for URLs)
+            _injectJavaScript();
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'FlutterBridge',
         onMessageReceived: (JavaScriptMessage message) {
@@ -207,12 +233,26 @@ class WebViewPlugin {
     }
   }
 
-  /// Loads a URL into the WebView.
-  Future<void> _loadUrlContent(String url) async {
+  String? _customScript;
+
+  /// Loads a URL into the WebView and stores custom JavaScript for injection.
+  Future<void> _loadUrlContent(String url, String? scriptContent) async {
+    _customScript = scriptContent;
     try {
       await _controller.loadRequest(Uri.parse(url));
     } catch (e) {
       debugPrint('Error loading URL content: $e');
+    }
+  }
+
+  /// Injects custom JavaScript into the loaded page.
+  Future<void> _injectJavaScript() async {
+    if (_customScript != null) {
+      try {
+        await _controller.runJavaScript(_customScript!);
+      } catch (e) {
+        debugPrint('Error injecting JavaScript: $e');
+      }
     }
   }
 }

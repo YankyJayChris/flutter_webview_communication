@@ -1,3 +1,8 @@
+## 0.1.2
+- Added support for injecting custom JavaScript into URL-loaded pages.
+- Added `saveToLocalStorage` method to store data in the WebView's local storage for both HTML and URL content.
+- Updated documentation and example to demonstrate HTML, URL usage with JavaScript injection, and local storage.
+
 ## 0.1.1
 - Fixed platform support issues by implementing conditional imports for `webview_flutter_android` and `webview_flutter_wkwebview`.
 - Added explicit platform initialization and support for Android, iOS, and macOS.
