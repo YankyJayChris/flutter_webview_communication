@@ -98,12 +98,42 @@ class WebViewPlugin {
     required dynamic value,
   }) async {
     try {
+      // Validate key
+      if (key.isEmpty) {
+        throw ArgumentError('Key cannot be empty');
+      }
+      // Attempt to JSON-encode the value to ensure it's serializable
       final String jsValue = jsonEncode(value);
-      final String jsCode = 'localStorage.setItem("$key", $jsValue);';
+      // Escape the key to prevent JavaScript injection
+      final String escapedKey = key.replaceAll('"', '\\"');
+      final String jsCode = 'localStorage.setItem("$escapedKey", $jsValue);';
       await _controller.runJavaScript(jsCode);
-      debugPrint('Saved to localStorage: $key = $jsValue');
+      debugPrint('Saved to localStorage: $escapedKey = $jsValue');
     } catch (e) {
-      debugPrint('Error saving to localStorage: $e');
+      debugPrint('Error saving to localStorage: key=$key, error=$e');
+      rethrow; // Rethrow to allow caller to handle the error
+    }
+  }
+
+  /// Removes a key from the WebView's local storage.
+  ///
+  /// [key] - The key to remove from local storage.
+  Future<void> removeFromLocalStorage({
+    required String key,
+  }) async {
+    try {
+      // Validate key
+      if (key.isEmpty) {
+        throw ArgumentError('Key cannot be empty');
+      }
+      // Escape the key to prevent JavaScript injection
+      final String escapedKey = key.replaceAll('"', '\\"');
+      final String jsCode = 'localStorage.removeItem("$escapedKey");';
+      await _controller.runJavaScript(jsCode);
+      debugPrint('Removed from localStorage: $escapedKey');
+    } catch (e) {
+      debugPrint('Error removing from localStorage: key=$key, error=$e');
+      rethrow; // Rethrow to allow caller to handle the error
     }
   }
 

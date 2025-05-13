@@ -83,9 +83,17 @@ class _WebViewDemoState extends State<WebViewDemo> {
     window.addEventListener('flutterData', (event) => {
       const data = event.detail;
       if (data.action === 'saveResponse') {
-        const storedData = localStorage.getItem(data.payload.key);
+        const storedData = localStorage.getItem(data.payload.key) || 'No data';
         const p = document.createElement('p');
         p.textContent = 'Stored: ' + storedData;
+        document.body.appendChild(p);
+      }
+    });
+    window.addEventListener('flutterData', (event) => {
+      const data = event.detail;
+      if (data.action === 'removeResponse') {
+        const p = document.createElement('p');
+        p.textContent = 'Removed key: ' + data.payload.key;
         document.body.appendChild(p);
       }
     });
@@ -137,8 +145,7 @@ class _WebViewDemoState extends State<WebViewDemo> {
 
   void _loadUrl() {
     setState(() {
-      useUrl = true; // Switch to URL mode if not already
-      // The WebView will reload with the new URL due to setState
+      useUrl = true;
     });
   }
 
@@ -146,7 +153,7 @@ class _WebViewDemoState extends State<WebViewDemo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-       title: SizedBox(
+        title: SizedBox(
           height: 40,
           child: TextField(
             controller: _urlController,
@@ -162,7 +169,7 @@ class _WebViewDemoState extends State<WebViewDemo> {
               ),
             ),
             onSubmitted: (value) => _loadUrl(),
-            enabled: errorMessage == null, // Corrected line
+            enabled: errorMessage == null,
           ),
         ),
         actions: [
@@ -215,24 +222,58 @@ class _WebViewDemoState extends State<WebViewDemo> {
                           },
                         ),
                         const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (_formKey.currentState!.validate()) {
-                              await webViewPlugin.saveToLocalStorage(
-                                key: _keyController.text,
-                                value: _valueController.text,
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Saved: ${_keyController.text} = ${_valueController.text}'),
-                                ),
-                              );
-                              _keyController.clear();
-                              _valueController.clear();
-                            }
-                          },
-                          child: const Text('Save to Local Storage'),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () async {
+                                if (_formKey.currentState!.validate()) {
+                                  await webViewPlugin.saveToLocalStorage(
+                                    key: _keyController.text,
+                                    value: _valueController.text,
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Saved: ${_keyController.text} = ${_valueController.text}'),
+                                    ),
+                                  );
+                                  _keyController.clear();
+                                  _valueController.clear();
+                                }
+                              },
+                              child: const Text('Save to Local Storage'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () async {
+                                if (_keyController.text.isNotEmpty) {
+                                  await webViewPlugin.removeFromLocalStorage(
+                                    key: _keyController.text,
+                                  );
+                                  webViewPlugin.sendToWebView(
+                                    action: 'removeResponse',
+                                    payload: {'key': _keyController.text},
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Removed: ${_keyController.text}'),
+                                    ),
+                                  );
+                                  _keyController.clear();
+                                  _valueController.clear();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Please enter a key to remove'),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Remove from Local Storage'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
