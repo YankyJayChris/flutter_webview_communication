@@ -16,3 +16,9 @@
 - Bi-directional communication between Flutter and WebView
 - Support for custom HTML, CSS, and JavaScript
 - Platform-specific configurations for Android and iOS
+
+## 0.1.3
+- Bug fix.
+- Implemented removal of existing local storage data before saving new data.
+- Improved error handling with silent logging for local storage operations.
+- Updated documentation and comments for better clarity.
