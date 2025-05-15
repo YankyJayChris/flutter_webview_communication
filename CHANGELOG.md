@@ -1,16 +1,18 @@
 # Changelog
 
-## 0.1.5
-- bug fix
-
 ## 0.1.4
-- Added `getLocalStorage` to retrieve all key-value pairs from WebView local storage using JavaScript.
-- Simplified `clearWebViewData` to use cross-platform `WebViewCookieManager` for cookie clearing and `WebViewController.clearCache` for cache clearing, removing platform-specific dependencies (`AndroidCookieManager`, `WebKitWebsiteDataStore`, `WebKitWebsiteDataType`).
-- Removed platform-specific imports (`webview_flutter_android`, `webview_flutter_wkwebview`, `webview_flutter_platform_interface`) to reduce dependency complexity.
-- Removed `setMediaPlaybackRequiresUserGesture` to eliminate the need for `webview_flutter_android`, making the plugin more lightweight.
-- Added getScrollPosition to retrieve the WebView's scroll position.
-- Updated example (`main.dart`) to demonstrate `getLocalStorage`, `clearWebViewData`, `reload`, `onLoadingStateChanged`, and `onJavaScriptError` with an enhanced UI, including loading state display, additional action buttons, and improved error handling.
-- Improved documentation in `README.md` to reflect new `getLocalStorage` method, updated platform support details, and simplified usage examples.
+- Added `enableCommunication` flag to control injection of communication scripts for URLs and HTML.
+- Added `onJavaScriptError` callback to handle JavaScript errors across all operations.
+- Enhanced `buildWebView` with new parameters:
+  - `enableCommunication`: Overrides constructor’s setting for communication scripts.
+  - `userAgent`: Sets a custom user agent string.
+  - `csp`: Adds Content Security Policy for custom HTML.
+  - `onLoadingStateChanged`: Provides callbacks for page loading states (`started`, `progress`, `finished`, `error`).
+- Added `removeFromLocalStorage` method to remove a specific key from WebView local storage.
+- Added `getLocalStorage` method to retrieve all key-value pairs from WebView local storage.
+- Added `clearWebViewData` method to clear cookies, cache, and local storage.
+- Added `reload` method to refresh the current WebView content (HTML or URL).
+- Improved error handling with detailed debug messages and `rethrow` for all async methods.
 
 ## 0.1.3
 - Bug fix.

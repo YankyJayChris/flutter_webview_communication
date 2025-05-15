@@ -1,6 +1,6 @@
 name: flutter_webview_communication
 description: A Flutter plugin for bi-directional communication between WebView and Flutter with HTML, CSS, and script support.
-version: 0.1.5
+version: 0.1.4
 homepage: https://github.com/YankyJayChris/flutter_webview_communication
 
 environment:

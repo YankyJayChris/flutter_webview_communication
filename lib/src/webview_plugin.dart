@@ -6,8 +6,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+
+// Conditional imports for platform-specific features
+import 'package:webview_flutter_android/webview_flutter_android.dart'
+    if (dart.library.io) 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart'
+    if (dart.library.io) 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 /// A plugin for creating WebViews with bi-directional communication capabilities.
 class WebViewPlugin {
@@ -328,6 +332,14 @@ class WebViewPlugin {
       throw Exception(
         'Web platform is not supported by flutter_webview_communication.',
       );
+    } else if (Platform.isAndroid) {
+      WebViewPlatform.instance = AndroidWebViewPlatform();
+    } else if (Platform.isIOS || Platform.isMacOS) {
+      WebViewPlatform.instance = WebKitWebViewPlatform();
+    } else {
+      throw Exception(
+        'This platform (${Platform.operatingSystem}) is not supported by flutter_webview_communication.',
+      );
     }
   }
 
@@ -370,8 +382,9 @@ class WebViewPlugin {
         },
       );
 
-    // Apply platform-specific configurations
-    if (_controller.platform is AndroidWebViewController) {
+    if (Platform.isAndroid &&
+        _controller.platform is AndroidWebViewController) {
+      AndroidWebViewController.enableDebugging(true);
       (_controller.platform as AndroidWebViewController)
           .setMediaPlaybackRequiresUserGesture(false);
     }
