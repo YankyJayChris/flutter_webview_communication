@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 /// A plugin for creating WebViews with bi-directional communication capabilities.
 class WebViewPlugin {
@@ -331,7 +333,15 @@ class WebViewPlugin {
 
   /// Initializes the WebViewController with platform-specific configurations.
   void _initializeController() {
-    const params = PlatformWebViewControllerCreationParams();
+    late PlatformWebViewControllerCreationParams params;
+
+    if (Platform.isAndroid) {
+      params = AndroidWebViewControllerCreationParams();
+    } else if (Platform.isIOS || Platform.isMacOS) {
+      params = WebKitWebViewControllerCreationParams();
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
 
     _controller = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -359,6 +369,12 @@ class WebViewPlugin {
           }
         },
       );
+
+    // Apply platform-specific configurations
+    if (_controller.platform is AndroidWebViewController) {
+      (_controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
   }
 
   /// Builds the complete HTML string with embedded CSS and JavaScript.
