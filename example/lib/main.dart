@@ -29,11 +29,14 @@ class WebViewDemo extends StatefulWidget {
 class _WebViewDemoState extends State<WebViewDemo> {
   late WebViewPlugin webViewPlugin;
   String? errorMessage;
+  String loadingState = 'idle';
+  int? loadingProgress;
   bool useUrl = false;
   final _formKey = GlobalKey<FormState>();
   final _keyController = TextEditingController();
   final _valueController = TextEditingController();
   final _urlController = TextEditingController(text: 'https://example.com');
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   final String sampleHtml = '''
     <div class="container">
@@ -106,9 +109,10 @@ class _WebViewDemoState extends State<WebViewDemo> {
     super.initState();
     try {
       webViewPlugin = WebViewPlugin(
+        enableCommunication: true,
         actionHandlers: {
           'updateText': (payload) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            _scaffoldMessengerKey.currentState?.showSnackBar(
               SnackBar(content: Text('Received: ${payload['text']}')),
             );
             webViewPlugin.sendToWebView(
@@ -126,6 +130,14 @@ class _WebViewDemoState extends State<WebViewDemo> {
               payload: {'key': payload['key']},
             );
           },
+        },
+        onJavaScriptError: (error) {
+          setState(() {
+            errorMessage = error;
+          });
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text('JavaScript Error: $error')),
+          );
         },
       );
     } catch (e) {
@@ -151,158 +163,244 @@ class _WebViewDemoState extends State<WebViewDemo> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: SizedBox(
-          height: 40,
-          child: TextField(
-            controller: _urlController,
-            decoration: InputDecoration(
-              hintText: 'Enter URL',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey,
+      child: Scaffold(
+        appBar: AppBar(
+          title: SizedBox(
+            height: 40,
+            child: TextField(
+              controller: _urlController,
+              decoration: InputDecoration(
+                hintText: 'Enter URL',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _loadUrl,
+                  tooltip: 'Load URL',
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: _loadUrl,
-              ),
+              onSubmitted: (value) => _loadUrl(),
+              enabled: errorMessage == null,
             ),
-            onSubmitted: (value) => _loadUrl(),
-            enabled: errorMessage == null,
           ),
+          actions: [
+            IconButton(
+              icon: Icon(useUrl ? Icons.code : Icons.web),
+              onPressed: () {
+                setState(() {
+                  useUrl = !useUrl;
+                });
+              },
+              tooltip: 'Toggle URL/HTML',
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(useUrl ? Icons.code : Icons.web),
-            onPressed: () {
-              setState(() {
-                useUrl = !useUrl;
-              });
-            },
-            tooltip: 'Toggle URL/HTML',
-          ),
-        ],
-      ),
-      body: errorMessage != null
-          ? Center(child: Text(errorMessage!))
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
+        body: errorMessage != null
+            ? Center(child: Text(errorMessage!))
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        TextFormField(
-                          controller: _keyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Key',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a key';
-                            }
-                            return null;
-                          },
-                        ),
+                        Text(
+                            'Loading State: $loadingState${loadingProgress != null ? ' ($loadingProgress%)' : ''}'),
                         const SizedBox(height: 10),
-                        TextFormField(
-                          controller: _valueController,
-                          decoration: const InputDecoration(
-                            labelText: 'Value',
-                            border: OutlineInputBorder(),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                controller: _keyController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Key',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a key';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              TextFormField(
+                                controller: _valueController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Value',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a value';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      if (_formKey.currentState!.validate()) {
+                                        await webViewPlugin.saveToLocalStorage(
+                                          key: _keyController.text,
+                                          value: _valueController.text,
+                                        );
+                                        _scaffoldMessengerKey.currentState
+                                            ?.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Saved: ${_keyController.text} = ${_valueController.text}'),
+                                          ),
+                                        );
+                                        _keyController.clear();
+                                        _valueController.clear();
+                                      }
+                                    },
+                                    child: const Text('Save to Local Storage'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      if (_keyController.text.isNotEmpty) {
+                                        await webViewPlugin
+                                            .removeFromLocalStorage(
+                                          key: _keyController.text,
+                                        );
+                                        webViewPlugin.sendToWebView(
+                                          action: 'removeResponse',
+                                          payload: {'key': _keyController.text},
+                                        );
+                                        _scaffoldMessengerKey.currentState
+                                            ?.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Removed: ${_keyController.text}'),
+                                          ),
+                                        );
+                                        _keyController.clear();
+                                        _valueController.clear();
+                                      } else {
+                                        _scaffoldMessengerKey.currentState
+                                            ?.showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Please enter a key to remove'),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child:
+                                        const Text('Remove from Local Storage'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a value';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () async {
-                                if (_formKey.currentState!.validate()) {
-                                  await webViewPlugin.saveToLocalStorage(
-                                    key: _keyController.text,
-                                    value: _valueController.text,
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Saved: ${_keyController.text} = ${_valueController.text}'),
-                                    ),
-                                  );
-                                  _keyController.clear();
-                                  _valueController.clear();
-                                }
-                              },
-                              child: const Text('Save to Local Storage'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () async {
-                                if (_keyController.text.isNotEmpty) {
-                                  await webViewPlugin.removeFromLocalStorage(
-                                    key: _keyController.text,
-                                  );
-                                  webViewPlugin.sendToWebView(
-                                    action: 'removeResponse',
-                                    payload: {'key': _keyController.text},
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Removed: ${_keyController.text}'),
-                                    ),
-                                  );
-                                  _keyController.clear();
-                                  _valueController.clear();
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('Please enter a key to remove'),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Text('Remove from Local Storage'),
-                            ),
-                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-                Expanded(
-                  child: webViewPlugin.buildWebView(
-                    content: useUrl ? currentUrl : sampleHtml,
-                    isUrl: useUrl,
-                    cssContent: useUrl ? null : sampleCss,
-                    scriptContent: sampleScript,
+                  Expanded(
+                    child: webViewPlugin.buildWebView(
+                      content: useUrl ? currentUrl : sampleHtml,
+                      isUrl: useUrl,
+                      cssContent: useUrl ? null : sampleCss,
+                      scriptContent: sampleScript,
+                      userAgent: 'WebViewDemo/1.0',
+                      csp: useUrl
+                          ? null
+                          : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+                      onLoadingStateChanged: (state, progress, error) {
+                        setState(() {
+                          loadingState = state;
+                          loadingProgress = progress;
+                          if (error != null) {
+                            errorMessage = error;
+                          }
+                        });
+                      },
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      webViewPlugin.sendToWebView(
-                        action: 'updateContent',
-                        payload: {
-                          'text': 'Hello from Flutter at ${DateTime.now()}',
-                        },
-                      );
-                    },
-                    child: const Text('Send to WebView'),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            webViewPlugin.sendToWebView(
+                              action: 'updateContent',
+                              payload: {
+                                'text':
+                                    'Hello from Flutter at ${DateTime.now()}',
+                              },
+                            );
+                          },
+                          child: const Text('Send to WebView'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final storage =
+                                await webViewPlugin.getLocalStorage();
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Local Storage: ${storage.toString()}'),
+                              ),
+                            );
+                          },
+                          child: const Text('Get Local Storage'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await webViewPlugin.clearWebViewData();
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              const SnackBar(
+                                content: Text('Cleared WebView data'),
+                              ),
+                            );
+                          },
+                          child: const Text('Clear WebView Data'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await webViewPlugin.reload();
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              const SnackBar(
+                                content: Text('Reloaded WebView'),
+                              ),
+                            );
+                          },
+                          child: const Text('Reload WebView'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final position =
+                                await webViewPlugin.getScrollPosition();
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Scroll Position: x=${position['x']}, y=${position['y']}'),
+                              ),
+                            );
+                          },
+                          child: const Text('Get Scroll Position'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 }
