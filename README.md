@@ -47,7 +47,7 @@ Add the following to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter_webview_communication: ^0.1.4
+  flutter_webview_communication: ^0.1.5
 ```
 
 Run `flutter pub get` to install the package.

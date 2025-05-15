@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.5
+- bug fix
+
 ## 0.1.4
 - Added `getLocalStorage` to retrieve all key-value pairs from WebView local storage using JavaScript.
 - Simplified `clearWebViewData` to use cross-platform `WebViewCookieManager` for cookie clearing and `WebViewController.clearCache` for cache clearing, removing platform-specific dependencies (`AndroidCookieManager`, `WebKitWebsiteDataStore`, `WebKitWebsiteDataType`).
