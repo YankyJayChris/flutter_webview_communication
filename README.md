@@ -47,7 +47,7 @@ Add the following to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter_webview_communication: ^0.1.4
+  flutter_webview_communication: ^0.1.6
 ```
 
 Run `flutter pub get` to install the package.
@@ -502,6 +502,7 @@ For advanced features like auto-playing media, add platform-specific dependencie
 
 ```yaml
 dependencies:
+  webview_flutter: ^4.8.0
   webview_flutter_android: ^3.16.4
   webview_flutter_wkwebview: ^3.14.0
 ```

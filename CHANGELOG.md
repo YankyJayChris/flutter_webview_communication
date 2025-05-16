@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.4
+## 0.1.6
 - Added `enableCommunication` flag to control injection of communication scripts for URLs and HTML.
 - Added `onJavaScriptError` callback to handle JavaScript errors across all operations.
 - Enhanced `buildWebView` with new parameters:
