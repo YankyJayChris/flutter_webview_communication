@@ -52,7 +52,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         if: matrix.flutter-version == '3.24.x'
         with:
           file: ./coverage/lcov.info
