@@ -1,6 +1,6 @@
 name: flutter_webview_communication
-description: A Flutter plugin for bi-directional communication between WebView and Flutter with HTML, CSS, and script support.
-version: 0.1.6
+description: A comprehensive Flutter plugin for bi-directional WebView communication with 70+ methods including navigation, security, monitoring, and advanced features.
+version: 0.3.0
 homepage: https://github.com/YankyJayChris/flutter_webview_communication
 
 environment:
@@ -10,14 +10,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  webview_flutter: ^4.8.0
-  webview_flutter_android: ^3.16.8
-  webview_flutter_wkwebview: ^3.14.0
+  webview_flutter: ^4.9.0
+  webview_flutter_android: ^3.16.9
+  webview_flutter_wkwebview: ^3.25.0
+  permission_handler: ^11.3.1
+  file_picker: ^8.1.6
+  path_provider: ^2.1.5
+  dio: ^5.7.0
+  webview_windows: ^0.4.0
+  # Note: Web platform uses dart:html IFrameElement (built-in)
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
