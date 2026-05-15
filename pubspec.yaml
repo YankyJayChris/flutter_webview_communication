@@ -13,7 +13,7 @@ dependencies:
   webview_flutter: ^4.9.0
   webview_flutter_android: ^3.16.9
   webview_flutter_wkwebview: ^3.25.0
-  permission_handler: ^11.3.1
+  permission_handler: ">=11.3.1 <13.0.0"
   file_picker: ^8.1.6
   path_provider: ^2.1.5
   dio: ^5.7.0
